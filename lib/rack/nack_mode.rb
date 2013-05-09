@@ -2,11 +2,19 @@ require 'active_support/core_ext/hash/keys'
 
 module Rack
   class NackMode
-    def initialize(app, options = {}, &health_callback)
+    def initialize(app, options = {})
       @app = app
-      @health_callback = health_callback || lambda { true }
 
-      options.assert_valid_keys :on_nack
+      options.assert_valid_keys :on_nack, :healthy_if, :sick_if
+      @health_callback = if options[:healthy_if] && options[:sick_if]
+        raise ArgumentError, 'Please specify either :healthy_if or :sick_if, not both'
+      elsif healthy_if = options[:healthy_if]
+        healthy_if
+      elsif sick_if = options[:sick_if]
+        lambda { !sick_if.call }
+      else
+        lambda { true }
+      end
       @on_nack = options[:on_nack] || lambda {}
     end
 
