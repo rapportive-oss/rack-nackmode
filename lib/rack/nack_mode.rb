@@ -6,7 +6,7 @@ module Rack
   # middleware when it wants to shut down, and the middleware will call back
   # when it's safe to do so.
   #
-  # Responds to health checks on /admin.
+  # Responds to health checks on /admin (configurable via :path option).
   #
   # Basic usage:
   #     class MyApp < Sinatra::Base
@@ -42,7 +42,8 @@ module Rack
     def initialize(app, options = {})
       @app = app
 
-      options.assert_valid_keys :healthy_if, :sick_if, :nacks_before_shutdown, :logger
+      options.assert_valid_keys :path, :healthy_if, :sick_if, :nacks_before_shutdown, :logger
+      @path = options[:path] || '/admin'
       @health_callback = if options[:healthy_if] && options[:sick_if]
         raise ArgumentError, 'Please specify either :healthy_if or :sick_if, not both'
       elsif healthy_if = options[:healthy_if]
@@ -78,7 +79,7 @@ module Rack
 
     private
     def health_check?(env)
-      env['PATH_INFO'] == '/admin' && env['REQUEST_METHOD'] == 'GET'
+      env['PATH_INFO'] == @path && env['REQUEST_METHOD'] == 'GET'
     end
 
     def health_check_response(env)
