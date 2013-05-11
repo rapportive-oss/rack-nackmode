@@ -42,7 +42,7 @@ module Rack
     def initialize(app, options = {})
       @app = app
 
-      options.assert_valid_keys :healthy_if, :sick_if, :nacks_before_shutdown
+      options.assert_valid_keys :healthy_if, :sick_if, :nacks_before_shutdown, :logger
       @health_callback = if options[:healthy_if] && options[:sick_if]
         raise ArgumentError, 'Please specify either :healthy_if or :sick_if, not both'
       elsif healthy_if = options[:healthy_if]
@@ -53,6 +53,7 @@ module Rack
         lambda { true }
       end
       @nacks_before_shutdown = options[:nacks_before_shutdown]
+      @logger = options[:logger]
 
       yield self if block_given?
     end
@@ -67,8 +68,10 @@ module Rack
 
     def shutdown(&block)
       if @nacks_before_shutdown
+        info "Shutting down after NACKing #@nacks_before_shutdown health checks"
         @shutdown_callback = block
       else
+        info 'Shutting down'
         block.call
       end
     end
@@ -85,7 +88,10 @@ module Rack
         if @shutdown_callback && @nacks_before_shutdown
           @nacks_before_shutdown -= 1
           if @nacks_before_shutdown <= 0
+            info 'Shutting down'
             @shutdown_callback.call
+          else
+            info "Waiting for #@nacks_before_shutdown more health checks"
           end
         end
         respond_sick
@@ -101,7 +107,12 @@ module Rack
     end
 
     def respond_sick
+      info 'Telling load balancer we are sick'
       [503, {}, ['BAD']]
+    end
+
+    def info(*args)
+      @logger.info(*args) if @logger
     end
   end
 end
