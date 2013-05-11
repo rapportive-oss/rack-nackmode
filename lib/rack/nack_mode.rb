@@ -62,7 +62,9 @@ module Rack
       else
         lambda { true }
       end
-      @nacks_before_shutdown = options[:nacks_before_shutdown]
+      if @nacks_before_shutdown = options[:nacks_before_shutdown]
+        raise ArgumentError, ":nacks_before_shutdown must be at least 1" unless @nacks_before_shutdown >= 1
+      end
       @logger = options[:logger]
 
       yield self if block_given?
