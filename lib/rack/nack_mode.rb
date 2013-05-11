@@ -1,5 +1,14 @@
 require 'active_support/core_ext/hash/keys'
 
+# work in or out of EventMachine
+unless defined?(EM)
+  module EM
+    def self.next_tick
+      yield
+    end
+  end
+end
+
 module Rack
   # Middleware that communicates impending shutdown to a load balancer via
   # NACKing (negative acking) health checks.  Your app needs to inform the
@@ -89,8 +98,10 @@ module Rack
         if @shutdown_callback && @nacks_before_shutdown
           @nacks_before_shutdown -= 1
           if @nacks_before_shutdown <= 0
-            info 'Shutting down'
-            @shutdown_callback.call
+            EM.next_tick do
+              info 'Shutting down'
+              @shutdown_callback.call
+            end
           else
             info "Waiting for #@nacks_before_shutdown more health checks"
           end
