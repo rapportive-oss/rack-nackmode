@@ -5,7 +5,7 @@ module Rack
     def initialize(app, options = {})
       @app = app
 
-      options.assert_valid_keys :on_nack, :healthy_if, :sick_if
+      options.assert_valid_keys :healthy_if, :sick_if, :nacks_before_shutdown
       @health_callback = if options[:healthy_if] && options[:sick_if]
         raise ArgumentError, 'Please specify either :healthy_if or :sick_if, not both'
       elsif healthy_if = options[:healthy_if]
@@ -15,7 +15,9 @@ module Rack
       else
         lambda { true }
       end
-      @on_nack = options[:on_nack] || lambda {}
+      @nacks_before_shutdown = options[:nacks_before_shutdown]
+
+      yield self if block_given?
     end
 
     def call(env)
@@ -23,6 +25,14 @@ module Rack
         health_check_response(env)
       else
         @app.call(env)
+      end
+    end
+
+    def shutdown(&block)
+      if @nacks_before_shutdown
+        @shutdown_callback = block
+      else
+        block.call
       end
     end
 
@@ -35,7 +45,12 @@ module Rack
       if healthy?
         respond_healthy
       else
-        @on_nack.call
+        if @shutdown_callback && @nacks_before_shutdown
+          @nacks_before_shutdown -= 1
+          if @nacks_before_shutdown <= 0
+            @shutdown_callback.call
+          end
+        end
         respond_sick
       end
     end
