@@ -1,6 +1,43 @@
 require 'active_support/core_ext/hash/keys'
 
 module Rack
+  # Middleware that communicates impending shutdown to a load balancer via
+  # NACKing (negative acking) health checks.  Your app needs to inform the
+  # middleware when it wants to shut down, and the middleware will call back
+  # when it's safe to do so.
+  #
+  # Responds to health checks on /admin.
+  #
+  # Basic usage:
+  #     class MyApp < Sinatra::Base
+  #       class << self
+  #         def shutting_down?
+  #           @shutting_down
+  #         end
+  #
+  #         def shutdown
+  #           @shutting_down = true
+  #
+  #           if @health_check
+  #             @health_check.shutdown { exit 0 }
+  #           else
+  #             exit 0
+  #           end
+  #         end
+  #       end
+  #
+  #       use Rack::NackMode, sick_if: method(:shutting_down?), nacks_before_shutdown: 3 do |health_check|
+  #         # store the middleware instance for calling #shutdown above
+  #         @health_check = health_check
+  #       end
+  #     end
+  #
+  # N.B. because Rack waits to initialise middleware until it receives an HTTP
+  # request, it's possible to shut down before the middleware is initialised.
+  # That's unlikely to be a problem, because having not received any HTTP
+  # requests, we've obviously not received any *health check* requests either,
+  # meaning the load balancer should already believe we're down: so it should
+  # be safe to shutdown immediately, as in the above example.
   class NackMode
     def initialize(app, options = {})
       @app = app
