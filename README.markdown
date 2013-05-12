@@ -8,8 +8,8 @@ Middleware enabling zero-downtime maintenance behind a load balancer.
 communicate to a load balancer its ability (or lack thereof) to serve requests.
 It supports a "NACK Mode" protocol, so that when your app wants to shut down, it
 makes sure the load balancer knows to stop sending it requests before doing so.
-It does this by responding to the health check request with a _n_egative
-_ack_nowledgements (NACK) until the load balancer marks it as down.  The app can
+It does this by responding to the health check request with a <em>n</em>egative
+<em>ack</em>nowledgements (NACK) until the load balancer marks it as down.  The app can
 (and should) continue to serve requests until that point.
 
 To make this work, your app needs to inform the middleware when it wants to shut
