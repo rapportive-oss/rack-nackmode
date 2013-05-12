@@ -11,7 +11,13 @@ require 'rack/nack_mode'
 
 
 class ExampleApp < Sinatra::Base
+  configure do
+    @database = Struct.new(:connected).new
+  end
+
   class << self
+    attr_reader :database
+
     def shutdown
       if @health_check
         @health_check.shutdown { exit 0 }
@@ -20,13 +26,17 @@ class ExampleApp < Sinatra::Base
       end
     end
 
+    def ready_to_serve?
+      database.connected
+    end
+
     # for testing
     def reset!
       @health_check = nil
     end
   end
 
-  use Rack::NackMode do |health_check|
+  use Rack::NackMode, healthy_if: method(:ready_to_serve?) do |health_check|
     # store the middleware instance for calling #shutdown above
     @health_check = health_check
   end
@@ -59,27 +69,46 @@ describe Rack::NackMode do
 
     describe 'when the app is healthy' do
       before do
+        ExampleApp.database.stub! :connected => true
         get '/admin'
       end
 
       it { should be_ok }
       its(:body) { should == 'GOOD' }
+
+      describe 'and the app is shutting down' do
+        before do
+          ExampleApp.stub! :exit
+
+          ExampleApp.shutdown
+          get '/admin'
+        end
+
+        it { should_not be_ok }
+        its(:body) { should == 'BAD' }
+      end
     end
 
-    describe 'when the app is shutting down' do
+    describe 'when the app is unhealthy' do
       before do
-        ExampleApp.stub! :exit
-
-        # Rack doesn't initialise the middleware until it gets a request; poke
-        # it into action.
-        get '/admin'
-
-        ExampleApp.shutdown
+        ExampleApp.database.stub! :connected => false
         get '/admin'
       end
 
       it { should_not be_ok }
-      its(:body) { should == 'BAD' }
+      its(:body) { should_not =~ /GOOD/ }
+
+      describe 'and the app is shutting down' do
+        before do
+          ExampleApp.stub! :exit
+
+          ExampleApp.shutdown
+          get '/admin'
+        end
+
+        it { should_not be_ok }
+        its(:body) { should == 'BAD' }
+      end
     end
   end
 
