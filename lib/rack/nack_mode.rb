@@ -10,7 +10,7 @@ module Rack
   #
   # Basic usage:
   #     class MyApp < Sinatra::Base
-  #       use Rack::NackMode, nacks_before_shutdown: 3 do |health_check|
+  #       use Rack::NackMode do |health_check|
   #         # store the middleware instance for calling #shutdown below
   #         @health_check = health_check
   #       end
@@ -33,6 +33,11 @@ module Rack
   # meaning the load balancer should already believe we're down: so it should
   # be safe to shutdown immediately, as in the above example.
   class NackMode
+    # Default number of health checks we NACK before shutting down.  This
+    # matches e.g. haproxy's default for how many failed checks it needs before
+    # marking a backend as down.
+    DEFAULT_NACKS_BEFORE_SHUTDOWN = 3
+
     def initialize(app, options = {})
       @app = app
 
@@ -51,9 +56,8 @@ module Rack
       else
         lambda { true }
       end
-      if @nacks_before_shutdown = options[:nacks_before_shutdown]
-        raise ArgumentError, ":nacks_before_shutdown must be at least 1" unless @nacks_before_shutdown >= 1
-      end
+      @nacks_before_shutdown = options[:nacks_before_shutdown] || DEFAULT_NACKS_BEFORE_SHUTDOWN
+      raise ArgumentError, ":nacks_before_shutdown must be at least 1" unless @nacks_before_shutdown >= 1
       @logger = options[:logger]
 
       yield self if block_given?
@@ -68,13 +72,8 @@ module Rack
     end
 
     def shutdown(&block)
-      if @nacks_before_shutdown
-        info "Shutting down after NACKing #@nacks_before_shutdown health checks"
-        @shutdown_callback = block
-      else
-        info 'Shutting down'
-        block.call
-      end
+      info "Shutting down after NACKing #@nacks_before_shutdown health checks"
+      @shutdown_callback = block
     end
 
     private

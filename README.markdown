@@ -21,7 +21,7 @@ Basic example:
 
 ```ruby
 class MyApp < Sinatra::Base
-  use Rack::NackMode, nacks_before_shutdown: 3 do |health_check|
+  use Rack::NackMode do |health_check|
     # store the middleware instance for calling #shutdown below
     @health_check = health_check
   end
@@ -57,6 +57,7 @@ The `use` statement to initialise the middleware takes the following options:
      * `:sick_if` &ndash; callback that should return `false` if your app is
        able to serve requests, and `true` otherwise.
  * `:nacks_before_shutdown` &ndash; how many times the app should tell the load
-   balancer it's going down before it can safely do so.  If not specified, NACK
-   Mode is disabled and the app will shut down immediately when asked to do so.
+   balancer it's going down before it can safely do so.  Defaults to 3, which
+   matches e.g. haproxy's default for how many failed checks it needs before
+   marking a backend as down.
  * `:logger` &ndash; middleware will log progress to this object if supplied.

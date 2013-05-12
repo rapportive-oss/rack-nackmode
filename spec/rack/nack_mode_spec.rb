@@ -26,7 +26,7 @@ class ExampleApp < Sinatra::Base
     end
   end
 
-  use Rack::NackMode, nacks_before_shutdown: 3 do |health_check|
+  use Rack::NackMode do |health_check|
     # store the middleware instance for calling #shutdown above
     @health_check = health_check
   end
