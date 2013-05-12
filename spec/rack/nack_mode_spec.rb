@@ -75,6 +75,11 @@ describe Rack::NackMode do
     describe 'when the app is shutting down' do
       before do
         ExampleApp.stub! :exit
+
+        # Rack doesn't initialise the middleware until it gets a request; poke
+        # it into action.
+        get '/admin'
+
         ExampleApp.shutdown
         get '/admin'
       end
