@@ -27,5 +27,7 @@ middleware will call back when it's safe to do so.
   gem.add_development_dependency 'sinatra'
 
 
-  gem.files = Dir['lib/**/*'] & %x{git ls-files -z}.split("\0")
+  gem.files = Dir[*%w(
+      lib/**/*
+      README*)] & %x{git ls-files -z}.split("\0")
 end
