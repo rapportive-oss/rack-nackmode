@@ -22,13 +22,7 @@ Basic example:
 ```ruby
 class MyApp < Sinatra::Base
   class << self
-    def shutting_down?
-      @shutting_down
-    end
-
     def shutdown
-      @shutting_down = true
-
       if @health_check # see note below
         @health_check.shutdown { exit 0 }
       else
@@ -37,7 +31,7 @@ class MyApp < Sinatra::Base
     end
   end
 
-  use Rack::NackMode, sick_if: method(:shutting_down?), nacks_before_shutdown: 3 do |health_check|
+  use Rack::NackMode, nacks_before_shutdown: 3 do |health_check|
     # store the middleware instance for calling #shutdown above
     @health_check = health_check
   end
@@ -56,10 +50,8 @@ shutdown immediately, as in the above example.
 The `use` statement to initialise the middleware takes the following options:
 
  * `:path` &ndash; path for the health check endpoint (default `/admin`)
- * Customising whether the health check reports healthy or sick (note you
-   should specify one of the following, or your app will always report healthy,
-   even when shutting down, which (with NACK Mode) will prevent it from
-   shutting down):
+ * Customising whether the health check reports healthy or sick (except while
+   shutting down, when it will always report sick):
      * `:healthy_if` &ndash; callback that should return `true` if your app is
        able to serve requests, and `false` otherwise.
      * `:sick_if` &ndash; callback that should return `false` if your app is

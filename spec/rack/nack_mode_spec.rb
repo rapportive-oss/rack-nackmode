@@ -12,13 +12,7 @@ require 'rack/nack_mode'
 
 class ExampleApp < Sinatra::Base
   class << self
-    def shutting_down?
-      @shutting_down
-    end
-
     def shutdown
-      @shutting_down = true
-
       if @health_check
         @health_check.shutdown { exit 0 }
       else
@@ -28,11 +22,11 @@ class ExampleApp < Sinatra::Base
 
     # for testing
     def reset!
-      @shutting_down = @health_check = nil
+      @health_check = nil
     end
   end
 
-  use Rack::NackMode, sick_if: method(:shutting_down?), nacks_before_shutdown: 3 do |health_check|
+  use Rack::NackMode, nacks_before_shutdown: 3 do |health_check|
     # store the middleware instance for calling #shutdown above
     @health_check = health_check
   end

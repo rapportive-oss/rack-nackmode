@@ -11,13 +11,7 @@ module Rack
   # Basic usage:
   #     class MyApp < Sinatra::Base
   #       class << self
-  #         def shutting_down?
-  #           @shutting_down
-  #         end
-  #
   #         def shutdown
-  #           @shutting_down = true
-  #
   #           if @health_check
   #             @health_check.shutdown { exit 0 }
   #           else
@@ -26,7 +20,7 @@ module Rack
   #         end
   #       end
   #
-  #       use Rack::NackMode, sick_if: method(:shutting_down?), nacks_before_shutdown: 3 do |health_check|
+  #       use Rack::NackMode, nacks_before_shutdown: 3 do |health_check|
   #         # store the middleware instance for calling #shutdown above
   #         @health_check = health_check
   #       end
@@ -89,27 +83,31 @@ module Rack
     end
 
     def health_check_response(env)
-      if healthy?
-        respond_healthy
-      else
-        if @shutdown_callback && @nacks_before_shutdown
-          @nacks_before_shutdown -= 1
-          if @nacks_before_shutdown <= 0
-            if defined?(EM)
-              EM.next_tick do
-                info 'Shutting down'
-                @shutdown_callback.call
-              end
-            else
+      if shutting_down?
+        @nacks_before_shutdown -= 1
+        if @nacks_before_shutdown <= 0
+          if defined?(EM)
+            EM.next_tick do
               info 'Shutting down'
               @shutdown_callback.call
             end
           else
-            info "Waiting for #@nacks_before_shutdown more health checks"
+            info 'Shutting down'
+            @shutdown_callback.call
           end
+        else
+          info "Waiting for #@nacks_before_shutdown more health checks"
         end
         respond_sick
+      elsif healthy?
+        respond_healthy
+      else
+        respond_sick
       end
+    end
+
+    def shutting_down?
+      @shutdown_callback
     end
 
     def healthy?
