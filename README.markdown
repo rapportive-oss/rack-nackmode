@@ -21,6 +21,11 @@ Basic example:
 
 ```ruby
 class MyApp < Sinatra::Base
+  use Rack::NackMode, nacks_before_shutdown: 3 do |health_check|
+    # store the middleware instance for calling #shutdown below
+    @health_check = health_check
+  end
+
   class << self
     def shutdown
       if @health_check # see note below
@@ -29,11 +34,6 @@ class MyApp < Sinatra::Base
         exit 0
       end
     end
-  end
-
-  use Rack::NackMode, nacks_before_shutdown: 3 do |health_check|
-    # store the middleware instance for calling #shutdown above
-    @health_check = health_check
   end
 end
 ```
