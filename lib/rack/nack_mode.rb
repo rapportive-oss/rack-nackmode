@@ -42,7 +42,11 @@ module Rack
     def initialize(app, options = {})
       @app = app
 
-      options.assert_valid_keys :path, :healthy_if, :sick_if, :nacks_before_shutdown, :logger
+      options.assert_valid_keys :path,
+                                :healthy_if,
+                                :sick_if,
+                                :nacks_before_shutdown,
+                                :logger
       @path = options[:path] || '/admin'
       @health_callback = if options[:healthy_if] && options[:sick_if]
         raise ArgumentError, 'Please specify either :healthy_if or :sick_if, not both'
