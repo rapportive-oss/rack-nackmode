@@ -6,6 +6,7 @@ rvm 1.9.3
 
 teardown () {
   [ -n "$app1" ] && kill -9 "$app1"
+  [ -n "$app2" ] && kill -9 "$app2"
 }
 
 setup_app() {
@@ -57,4 +58,49 @@ setup_app() {
   echo $output
   [ "$status" -ne 0 ]
   unset app1
+}
+
+@test "haproxy load balances between apps" {
+  setup_app
+  rackup -p 4000 &
+  app1=$!
+  rackup -p 4001 &
+  app2=$!
+  sleep 10 # give haproxy a chance to notice they're awake
+
+  run curl -s localhost/info
+  [ "$output" = Hello ]
+
+  kill $app1 $app2 && unset app1 app2
+  sleep 5 # give haproxy a chance to notice they're dead
+}
+
+@test "shutting down one app doesn't incur downtime" {
+  setup_app
+  rackup -p 4000 &
+  app1=$!
+  rackup -p 4001 &
+  app2=$!
+  sleep 10 # give haproxy a chance to notice they're awake
+
+  run curl -s localhost/info
+  [ "$output" = Hello ]
+
+  curl -s -XPOST localhost:4000/shutdown -dfoo
+  start=$(date +%s)
+
+  while [ $[ $(date +%s) - $start < 10 ] = 1 ]; do
+    run curl -s localhost/info
+    echo $output
+    [ "$status" -eq 0 ]
+    [ "$output" = Hello ]
+    sleep 0.1
+  done
+
+  run ps -p $app1
+  echo $output
+  [ "$status" -ne 0 ]
+  unset app1
+
+  kill $app2 && unset app2
 }
