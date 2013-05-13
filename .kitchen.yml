@@ -12,6 +12,7 @@ suites:
 - name: default
   run_list:
     - recipe[haproxy]
+    - recipe[haproxy-httpchk]
     - recipe[rvm::system]
   attributes:
     rvm:
