@@ -10,5 +10,11 @@ platforms:
 
 suites:
 - name: default
-  run_list: []
-  attributes: {}
+  run_list:
+    - recipe[haproxy]
+    - recipe[rvm::system]
+  attributes:
+    rvm:
+      default_ruby: system # make chef-solo work
+      rubies:
+        - 1.9.3
