@@ -1,0 +1,21 @@
+---
+driver_plugin: vagrant
+
+platforms:
+- name: ubuntu-12.04
+  driver_config:
+    box: canonical-ubuntu-12.04
+    box_url: http://cloud-images.ubuntu.com/vagrant/precise/current/precise-server-cloudimg-amd64-vagrant-disk1.box
+    require_chef_omnibus: true
+
+suites:
+- name: default
+  run_list:
+    - recipe[haproxy]
+    - recipe[haproxy-httpchk]
+    - recipe[rvm::system]
+  attributes:
+    rvm:
+      default_ruby: system # make chef-solo work
+      rubies:
+        - 1.9.3

@@ -61,3 +61,19 @@ The `use` statement to initialise the middleware takes the following options:
    matches e.g. haproxy's default for how many failed checks it needs before
    marking a backend as down.
  * `:logger` &ndash; middleware will log progress to this object if supplied.
+
+## Testing
+
+The RSpec specs cover most of the functionality:
+
+    $ bundle exec rspec
+
+### Integration testing
+
+To really verify this works, we need to set up two instances of an app using
+this middleware behind a load balancer, and fire requests at the load balancer
+while taking down one of the instances.
+
+    $ bundle exec kitchen test
+
+You'll need [Vagrant](http://www.vagrantup.com/) installed.

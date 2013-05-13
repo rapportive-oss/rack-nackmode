@@ -1,0 +1,7 @@
+source 'https://rubygems.org'
+
+gem 'rack'
+gem 'sinatra'
+gem 'thin'
+
+gem 'rack-nackmode', git: 'https://github.com/rapportive-oss/rack-nackmode.git'
