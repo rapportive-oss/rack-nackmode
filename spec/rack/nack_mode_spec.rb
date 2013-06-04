@@ -113,8 +113,6 @@ describe Rack::NackMode do
   end
 
   describe 'NACK Mode' do
-    subject { ExampleApp }
-
     before do
       ExampleApp.stub! :exit
 
