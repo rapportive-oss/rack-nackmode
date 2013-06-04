@@ -1,6 +1,6 @@
 Gem::Specification.new do |gem|
   gem.name = 'rack-nackmode'
-  gem.version = '0.1.0'
+  gem.version = '0.1.1'
 
   gem.summary = 'Middleware for zero-downtime maintenance behind a load balancer'
   gem.description = <<-DESC
