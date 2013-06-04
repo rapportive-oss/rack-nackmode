@@ -16,7 +16,7 @@ class ExampleApp < Sinatra::Base
   end
 
   class << self
-    attr_reader :database
+    attr_reader :database, :health_check
 
     def shutdown
       if @health_check
@@ -52,6 +52,10 @@ describe Rack::NackMode do
 
   let :app do
     ExampleApp.new
+  end
+
+  before do
+    Rack::NackMode::Timer.stub :new => mock('timer', cancel: nil)
   end
 
   after do
@@ -153,6 +157,29 @@ describe Rack::NackMode do
         ExampleApp.shutdown
         3.times { get '/admin' }
         EM.run_all_ticks
+      end
+    end
+
+    describe "when we don't get health checks" do
+      before do
+        ExampleApp.health_check.stub(:install_healthcheck_timeout) do |&timeout|
+          @healthcheck_timeout = timeout
+          mock('timer')
+        end
+
+        ExampleApp.shutdown
+      end
+
+      it 'should shut down after waiting long enough' do
+        ExampleApp.should_receive :exit
+
+        @healthcheck_timeout.call
+      end
+
+      it 'should clear the timeout after receiving a health check' do
+        ExampleApp.health_check.should_receive(:clear_healthcheck_timeout)
+
+        get '/admin'
       end
     end
   end

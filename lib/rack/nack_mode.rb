@@ -38,6 +38,11 @@ module Rack
     # marking a backend as down.
     DEFAULT_NACKS_BEFORE_SHUTDOWN = 3
 
+    # Default time (in seconds) during shutdown to wait for the first
+    # healthcheck request before concluding that the healthcheck is missing or
+    # misconfigured, and shutting down anyway.
+    DEFAULT_HEALTHCHECK_TIMEOUT = 15
+
     def initialize(app, options = {})
       @app = app
 
@@ -45,6 +50,7 @@ module Rack
                                 :healthy_if,
                                 :sick_if,
                                 :nacks_before_shutdown,
+                                :healthcheck_timeout,
                                 :logger
       @path = options[:path] || '/admin'
       @health_callback = if options[:healthy_if] && options[:sick_if]
@@ -58,6 +64,7 @@ module Rack
       end
       @nacks_before_shutdown = options[:nacks_before_shutdown] || DEFAULT_NACKS_BEFORE_SHUTDOWN
       raise ArgumentError, ":nacks_before_shutdown must be at least 1" unless @nacks_before_shutdown >= 1
+      @healthcheck_timeout = options[:healthcheck_timeout] || DEFAULT_HEALTHCHECK_TIMEOUT
       @logger = options[:logger]
 
       yield self if block_given?
@@ -65,6 +72,7 @@ module Rack
 
     def call(env)
       if health_check?(env)
+        clear_healthcheck_timeout
         health_check_response(env)
       else
         @app.call(env)
@@ -74,9 +82,26 @@ module Rack
     def shutdown(&block)
       info "Shutting down after NACKing #@nacks_before_shutdown health checks"
       @shutdown_callback = block
+
+      install_healthcheck_timeout { do_shutdown }
+
+      nil
     end
 
     private
+    def install_healthcheck_timeout
+      @healthcheck_timer = Timer.new(@healthcheck_timeout) do
+        warn "Gave up waiting for a health check after #{@healthcheck_timeout}s; bailing out."
+        yield
+      end
+    end
+
+    def clear_healthcheck_timeout
+      return unless @healthcheck_timer
+      @healthcheck_timer.cancel
+      @healthcheck_timer = nil
+    end
+
     def health_check?(env)
       env['PATH_INFO'] == @path && env['REQUEST_METHOD'] == 'GET'
     end
@@ -127,6 +152,46 @@ module Rack
 
     def info(*args)
       @logger.info(*args) if @logger
+    end
+
+    def warn(*args)
+      @logger.warn(*args) if @logger
+    end
+
+    module Timer
+      def self.new(timeout)
+        if defined?(EM)
+          EMTimer.new(timeout) { yield }
+        else
+          ThreadTimer.new(timeout) { yield }
+        end
+      end
+
+      class EMTimer
+        def initialize(timeout)
+          @timer = EM.add_timer(timeout) { yield }
+        end
+
+        def cancel
+          EM.cancel_timer(@timer)
+        end
+      end
+
+      class ThreadTimer
+        def initialize(timeout)
+          @thread = Thread.new do
+            waited = sleep(timeout)
+            # if we woke up early, waited < timeout
+            if waited >= timeout
+              yield
+            end
+          end
+        end
+
+        def cancel
+          @thread.run # will wake up early from sleep
+        end
+      end
     end
   end
 end

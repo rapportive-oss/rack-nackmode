@@ -60,6 +60,13 @@ The `use` statement to initialise the middleware takes the following options:
    balancer it's going down before it can safely do so.  Defaults to 3, which
    matches e.g. haproxy's default for how many failed checks it needs before
    marking a backend as down.
+ * `:healthcheck_timeout` &ndash; how long (in seconds) the app should wait for
+   the first health check request.  This is to avoid the app refusing to shut
+   down if the load balancer is misconfigured (or absent); if it waits this
+   long without seeing a single health check, it will simply shut down.  Should
+   be significantly longer than your load balancer's health check interval.
+   Defaults to 15 seconds, which is conservatively longer than
+   haproxy's default interval.
  * `:logger` &ndash; middleware will log progress to this object if supplied.
 
 ## Testing
