@@ -87,12 +87,10 @@ module Rack
         if @nacks_before_shutdown <= 0
           if defined?(EM)
             EM.next_tick do
-              info 'Shutting down'
-              @shutdown_callback.call
+              do_shutdown
             end
           else
-            info 'Shutting down'
-            @shutdown_callback.call
+            do_shutdown
           end
         else
           info "Waiting for #@nacks_before_shutdown more health checks"
@@ -107,6 +105,11 @@ module Rack
 
     def shutting_down?
       @shutdown_callback
+    end
+
+    def do_shutdown
+      info 'Shutting down'
+      @shutdown_callback.call
     end
 
     def healthy?
