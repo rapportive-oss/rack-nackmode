@@ -90,6 +90,8 @@ module Rack
 
     private
     def install_healthcheck_timeout
+      clear_healthcheck_timeout # avoid several timers if #shutdown called twice
+
       @healthcheck_timer = Timer.new(@healthcheck_timeout) do
         warn "Gave up waiting for a health check after #{@healthcheck_timeout}s; bailing out."
         yield
