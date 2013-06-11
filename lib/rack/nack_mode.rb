@@ -88,6 +88,10 @@ module Rack
       nil
     end
 
+    def shutting_down?
+      !!@shutdown_callback
+    end
+
     private
     def install_healthcheck_timeout
       clear_healthcheck_timeout # avoid several timers if #shutdown called twice
@@ -128,10 +132,6 @@ module Rack
       else
         respond_sick
       end
-    end
-
-    def shutting_down?
-      @shutdown_callback
     end
 
     def do_shutdown
